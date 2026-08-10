@@ -1,0 +1,6 @@
+type: custom:sambesi-light-card
+title: Sambesi Lights
+preset: djungle
+layout: wall
+auto_discover: true
+group_by: area

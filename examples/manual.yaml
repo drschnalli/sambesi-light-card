@@ -1,0 +1,8 @@
+type: custom:sambesi-light-card
+title: Manuelle Lampen
+preset: neon
+auto_discover: false
+lights:
+  - light.wohnzimmer_decke
+  - light.stehlampe
+  - light.kueche

@@ -1,0 +1,20 @@
+{
+  "name": "sambesi-light-card",
+  "version": "0.1.0",
+  "description": "Universal Home Assistant Lovelace card for lights, rooms and scenes.",
+  "main": "dist/sambesi-light-card.js",
+  "scripts": {
+    "build": "node scripts/copy.js",
+    "release": "echo Release via GitHub Actions"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "lights",
+    "hacs",
+    "sambesi"
+  ],
+  "author": "drschnalli",
+  "license": "MIT"
+}

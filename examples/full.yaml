@@ -1,0 +1,26 @@
+type: custom:sambesi-light-card
+title: Hausbeleuchtung
+preset: djungle
+layout: wall
+auto_discover: true
+group_by: area
+sort_by: area_name
+show_header: true
+show_stats: true
+show_search: true
+show_area_tabs: true
+show_scenes: true
+show_footer: true
+controls:
+  power: true
+  brightness: true
+  quick_brightness: true
+  color_temp: auto
+  rgb: auto
+  scenes: true
+quick_brightness_values:
+  - 10
+  - 25
+  - 50
+  - 75
+  - 100
