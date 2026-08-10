@@ -2,11 +2,18 @@
 
 **Sambesi Light Card** is a universal Home Assistant Lovelace custom card for lights, rooms and scenes.
 
-Version: **v0.1.0**
+Version: **v0.1.1**
 
 It is not tied to Casambi. It works with normal Home Assistant `light.*` entities, for example Hue, Zigbee2MQTT, ZHA, Shelly, ESPHome, WLED, MQTT, KNX, Homematic, Matter and Casambi lights.
 
-## Features in v0.1.0
+## Features in v0.1.1
+
+- Fix: card picker integration for Home Assistant 2026.6+ using `getEntitySuggestion`
+- Fix: preview rendering even before live Home Assistant states are injected
+- Adds `getGridOptions()` for the newer sections dashboard layout
+- Adds `preview: true` and `documentationURL` to the custom card registration
+
+## Features from v0.1.0
 
 - Auto discovery of `light.*` entities
 - Optional manual light list
@@ -143,3 +150,8 @@ exclude_areas:
 ## Notes
 
 v0.1.0 is the first full feature prototype. It intentionally avoids integration-specific assumptions and only relies on Home Assistant states and registry metadata exposed to Lovelace.
+
+
+## v0.1.1 Picker Fix
+
+Home Assistant 2026.6 introduced entity-based card picker suggestions for custom cards. This version opts in with `getEntitySuggestion`, so the card appears under Community suggestions when a `light.*` entity is selected in the add-card flow.

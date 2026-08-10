@@ -3,7 +3,7 @@
  * Universal Home Assistant Lovelace card for lights, scenes and rooms.
  * Repository: https://github.com/drschnalli/sambesi-light-card
  */
-const SAMBESI_VERSION = "0.1.0";
+const SAMBESI_VERSION = "0.1.1";
 
 const DEFAULT_CONFIG = {
   title: "Sambesi Lights",
@@ -103,6 +103,7 @@ class SambesiLightCard extends HTMLElement {
 
   set hass(hass){ this._hass = hass; this.render(); }
   getCardSize(){ return 4; }
+  getGridOptions(){ return { rows: 4, columns: 12, min_rows: 3, max_rows: 8, min_columns: 6 }; }
 
   _areaNameForEntity(entityId){
     const h = this._hass;
@@ -187,7 +188,13 @@ class SambesiLightCard extends HTMLElement {
   `; }
 
   render(){
-    if (!this.shadowRoot || !this._hass) return;
+    if (!this.shadowRoot) return;
+    if (!this._hass) {
+      const cfg=this._config || DEFAULT_CONFIG;
+      const cls=`preset-${cfg.preset||'djungle'} layout-${cfg.layout||'wall'}`;
+      this.shadowRoot.innerHTML = `<style>${this._css()}</style><ha-card class="${cls}"><div class="wrap"><div class="header"><div><div class="title">${cfg.title||'Sambesi Lights'}</div><div class="sub">Universal Light Control · Preview · v${SAMBESI_VERSION}</div></div><div class="stats"><span class="pill"><strong>3</strong> Lampen</span><span class="pill"><strong>2</strong> An</span></div></div><div class="grid"><div class="light on"><div class="top"><div><div class="name">Wohnzimmer Decke</div><div class="area">Wohnzimmer</div></div><button class="bulb">💡</button></div><div class="state">ON · 72%</div><div class="bar"><div class="fill" style="width:72%"></div></div></div><div class="light"><div class="top"><div><div class="name">Küche Arbeitsplatte</div><div class="area">Küche</div></div><button class="bulb">💡</button></div><div class="state">OFF · 0%</div><div class="bar"><div class="fill" style="width:0%"></div></div></div></div><div class="footer">Sambesi Light Card v${SAMBESI_VERSION}</div></div></ha-card>`;
+      return;
+    }
     const cfg=this._config;
     const lightsAll=this._discoverLights();
     const q=this._query.toLowerCase();
@@ -253,5 +260,42 @@ class SambesiLightCardEditor extends HTMLElement {
 customElements.define('sambesi-light-card', SambesiLightCard);
 customElements.define('sambesi-light-card-editor', SambesiLightCardEditor);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: 'sambesi-light-card', name: 'Sambesi Light Card', description: 'Universal room-aware light control card with Djungle, Neon, LCARS and Minimal presets.' });
+window.customCards.push({
+  type: 'sambesi-light-card',
+  name: 'Sambesi Light Card',
+  preview: true,
+  description: 'Universal room-aware light control card with Djungle, Neon, LCARS and Minimal presets.',
+  documentationURL: 'https://github.com/drschnalli/sambesi-light-card',
+  getEntitySuggestion: (hass, entityId) => {
+    if (!entityId || entityId.split('.')[0] !== 'light') return null;
+    const st = hass?.states?.[entityId];
+    const name = st?.attributes?.friendly_name || entityId;
+    return [
+      {
+        label: `Sambesi Light: ${name}`,
+        config: {
+          type: 'custom:sambesi-light-card',
+          title: name,
+          preset: 'djungle',
+          layout: 'compact',
+          auto_discover: false,
+          lights: [entityId],
+          show_area_tabs: false,
+          show_search: false
+        }
+      },
+      {
+        label: 'Sambesi Light Wall',
+        config: {
+          type: 'custom:sambesi-light-card',
+          title: 'Sambesi Lights',
+          preset: 'djungle',
+          layout: 'wall',
+          auto_discover: true,
+          group_by: 'area'
+        }
+      }
+    ];
+  }
+});
 console.info(`%c SAMBESI-LIGHT-CARD %c v${SAMBESI_VERSION} `, 'color:#07130f;background:#21f59b;font-weight:700;padding:2px 4px;border-radius:4px 0 0 4px;', 'color:#eafff6;background:#10231c;font-weight:700;padding:2px 4px;border-radius:0 4px 4px 0;');
