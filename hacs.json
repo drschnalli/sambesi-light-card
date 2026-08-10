@@ -1,1 +1,6 @@
-{"name":"Sambesi Light Card","render_readme":true,"filename":"sambesi-light-card.js","content_in_root":false}
+{
+  "name": "Sambesi Light Card",
+  "render_readme": true,
+  "filename": "sambesi-light-card.js",
+  "content_in_root": false
+}
