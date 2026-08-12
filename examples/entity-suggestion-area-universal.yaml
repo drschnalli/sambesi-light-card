@@ -1,0 +1,9 @@
+type: custom:sambesi-light-card
+title: Sambesi Lights - Büro Kalli
+area_filter: Büro Kalli
+compact_preview: false
+preview_limit: 2
+max_lights: 4
+show_search: true
+show_area_chips: true
+show_quick_buttons: true

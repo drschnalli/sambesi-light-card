@@ -1,0 +1,10 @@
+type: custom:sambesi-light-card
+title: MiniController Casambi Dim2Warm
+entities:
+  - light.minicontroller_casambi_tw
+compact_preview: false
+preview_limit: 1
+max_lights: 1
+show_search: false
+show_area_chips: false
+show_quick_buttons: true
