@@ -1,33 +1,16 @@
-# Sambesi Light Card v0.1.7
+# Sambesi Light Card v0.1.8
 
-Improves Home Assistant entity-picker suggestions.
+Hotfix: The preview limit now applies only to the Home Assistant **Add card / Nach Karte** picker stub preview, not to the normal card editor preview.
 
 ## Changes
 
-- `Einzellicht` suggestion now creates a real one-light card with `entities: [selected light]`.
-- `Bereich/Universal` suggestion now creates an area/universal card using `area_filter` if Home Assistant exposes an area/room attribute.
-- `area_filter` is now supported in the card logic.
-- Keeps the v0.1.5/v0.1.6 card-picker preview limit.
+- Adds internal `_picker_preview` flag for the Add-card picker preview.
+- `getStubConfig()` now returns `_picker_preview: true` and `preview_limit: 2`.
+- The visual editor removes `_picker_preview` immediately, so the editor preview can show the normal configurable card.
+- Default picker preview limit reduced from 3 to 2.
+- Keeps v0.1.7 entity suggestions for `light.*` entities.
 
-## Einzellicht suggestion
+## Result
 
-```yaml
-type: custom:sambesi-light-card
-title: MiniController Casambi Dim2Warm
-entities:
-  - light.minicontroller_casambi_tw
-max_lights: 1
-show_search: false
-show_area_chips: false
-```
-
-## Bereich/Universal suggestion
-
-```yaml
-type: custom:sambesi-light-card
-title: Sambesi Lights - <area>
-area_filter: <area>
-max_lights: 4
-show_search: true
-show_area_chips: true
-```
+- **Nach Karte** preview remains small and performant.
+- **Karte anpassen** editor preview is no longer artificially limited.

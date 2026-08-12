@@ -1,7 +1,7 @@
 {
   "name": "sambesi-light-card",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "type": "module",
   "license": "MIT",
-  "description": "Universal light control card with differentiated entity suggestions and picker preview limit."
+  "description": "Universal light control card with picker-only preview limit and entity suggestions."
 }
