@@ -1,84 +1,22 @@
-
-const SAMBESI_VERSION = "0.1.4";
-const DEFAULT_CONFIG = {
-  title: "Sambesi Lights", preset: "djungle", layout: "wall",
-  auto_discover: true, group_by: "area", show_search: true,
-  show_area_tabs: true, show_unavailable: true, lights: [],
-  quick_brightness_values: [10,25,50,75,100]
-};
-function merge(a,b){ return Object.assign({}, a, b || {}); }
-function nameOf(s){ return (s && s.attributes && s.attributes.friendly_name) || (s && s.entity_id) || ""; }
-function isOn(s){ return s && s.state === "on"; }
-function pct(v){ return Math.round(((Number(v)||0)/255)*100); }
-function bri(v){ return Math.round(Math.max(0, Math.min(100, Number(v)||0))*2.55); }
-
-class SambesiLightCard extends HTMLElement {
-  constructor(){
-    super(); this.attachShadow({mode:"open"});
-    this._config = merge(DEFAULT_CONFIG, {});
-    this._area = "all"; this._query = ""; this._lastSig = ""; this._lastAt = 0;
-    this._tabsBusy = false; this._tabsBusyUntil = 0;
-  }
-  static getConfigElement(){ return document.createElement("sambesi-light-card-editor"); }
-  static getStubConfig(){ return {type:"custom:sambesi-light-card", title:"Sambesi Lights", preset:"djungle", layout:"wall", auto_discover:true, group_by:"area"}; }
-  setConfig(config){ this._config = merge(DEFAULT_CONFIG, config); this.render(); }
-  set hass(hass){
-    this._hass = hass;
-    const now = Date.now();
-    if (this._tabsBusy || now < this._tabsBusyUntil) return;
-    const states = hass && hass.states ? hass.states : {};
-    const sig = Object.keys(states).filter(id=>id.startsWith("light.")).map(id=>`${id}:${states[id].state}:${states[id].attributes && states[id].attributes.brightness || ""}`).join("|") + this._area + this._query + JSON.stringify(this._config);
-    if (sig === this._lastSig && now - this._lastAt < 1200) return;
-    this._lastSig = sig; this._lastAt = now; this.render();
-  }
-  getCardSize(){ return 4; }
-  getGridOptions(){ return {rows:4, columns:12, min_rows:3, max_rows:8, min_columns:6}; }
-  areaName(entityId){
-    const h=this._hass, e=h && h.entities && h.entities[entityId], d=e && e.device_id;
-    const areaId = (e && e.area_id) || (h && h.devices && h.devices[d] && h.devices[d].area_id);
-    return areaId ? ((h && h.areas && h.areas[areaId] && h.areas[areaId].name) || areaId) : "Ohne Bereich";
-  }
-  lights(){
-    const states = this._hass && this._hass.states ? this._hass.states : {};
-    let ids = [];
-    if (this._config.auto_discover) ids = Object.keys(states).filter(id=>id.startsWith("light."));
-    ids = ids.concat(this._config.lights || []);
-    ids = Array.from(new Set(ids)).filter(id=>states[id]);
-    if (!this._config.show_unavailable) ids = ids.filter(id=>!["unknown","unavailable"].includes(states[id].state));
-    return ids.map(id=>states[id]).sort((a,b)=>this.areaName(a.entity_id).localeCompare(this.areaName(b.entity_id)) || nameOf(a).localeCompare(nameOf(b)));
-  }
-  css(){ return `
-    :host{--bg:#07130f;--card:#10231c;--txt:#eafff6;--mut:#8ab8a4;--acc:#21f59b;--acc2:#1fb6ff;display:block}.preset-neon{--bg:#090a1d;--card:#13183a;--acc:#40d9ff;--acc2:#b46cff}.preset-lcars{--bg:#050505;--card:#111;--txt:#ffdca8;--mut:#d69a65;--acc:#ff9b25;--acc2:#c7a3ff}.preset-minimal{--bg:var(--ha-card-background,#fff);--card:rgba(127,127,127,.08);--txt:var(--primary-text-color);--mut:var(--secondary-text-color);--acc:var(--primary-color);--acc2:var(--accent-color)}ha-card{background:linear-gradient(135deg,var(--bg),#06140f);color:var(--txt);border-radius:18px;overflow:hidden;border:1px solid color-mix(in srgb,var(--acc) 22%,transparent)}.wrap{padding:16px;overflow-anchor:none}.title{font-size:20px;font-weight:800}.sub,.area,.state,.footer{color:var(--mut);font-size:12px}.stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.pill{border:1px solid color-mix(in srgb,var(--acc) 30%,transparent);border-radius:999px;padding:6px 10px}.search{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid color-mix(in srgb,var(--acc) 25%,transparent);background:rgba(0,0,0,.18);color:var(--txt);padding:10px;margin:10px 0}.tabs{display:flex;gap:7px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scrollbar-width:thin;overscroll-behavior-x:contain;touch-action:pan-x}.tab{flex:0 0 auto;border:0;border-radius:999px;background:var(--card);color:var(--mut);padding:8px 11px}.tab.active{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#00150d;font-weight:800}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.layout-list .grid{grid-template-columns:1fr}.layout-compact .grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}.light{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:13px}.light.on{border-color:color-mix(in srgb,var(--acc) 48%,transparent)}.top{display:flex;justify-content:space-between}.name{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bulb{width:38px;height:38px;border-radius:14px;border:0;background:rgba(255,255,255,.08);cursor:pointer}.bar{height:10px;background:rgba(0,0,0,.35);border-radius:999px;overflow:hidden;margin:8px 0}.fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}.range{width:100%;accent-color:var(--acc)}.q{border:0;border-radius:12px;background:rgba(255,255,255,.08);color:var(--txt);padding:7px;margin:3px;cursor:pointer}.group-title{margin:14px 0 8px;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.12em}.footer{text-align:right;margin-top:12px}`; }
-  render(){
-    if(!this.shadowRoot) return;
-    if(!this._hass){ this.shadowRoot.innerHTML = `<style>${this.css()}</style><ha-card class="preset-djungle"><div class="wrap"><div class="title">Sambesi Lights</div><div class="sub">Preview v${SAMBESI_VERSION}</div></div></ha-card>`; return; }
-    const cfg=this._config, all=this.lights(), query=this._query.toLowerCase();
-    const counts={}; all.forEach(l=>{ const a=this.areaName(l.entity_id); counts[a]=(counts[a]||0)+1; });
-    const visible=all.filter(l=>(this._area==="all"||this.areaName(l.entity_id)===this._area) && (!query || (nameOf(l)+l.entity_id+this.areaName(l.entity_id)).toLowerCase().includes(query)));
-    this.shadowRoot.innerHTML = `<style>${this.css()}</style><ha-card class="preset-${cfg.preset} layout-${cfg.layout}"><div class="wrap"><div class="title">${cfg.title}</div><div class="sub">Universal Light Control · v${SAMBESI_VERSION}</div><div class="stats"><span class="pill"><b>${all.length}</b> Lampen</span><span class="pill"><b>${all.filter(isOn).length}</b> An</span><span class="pill"><b>${all.filter(l=>["unavailable","unknown"].includes(l.state)).length}</b> Offline</span></div>${cfg.show_search?`<input class="search" placeholder="Lampen suchen..." value="${this._query}">`:""}${cfg.show_area_tabs?`<div class="tabs"><button class="tab ${this._area==="all"?"active":""}" data-area="all">Alle ${all.length}</button>${Object.entries(counts).sort().map(([a,c])=>`<button class="tab ${this._area===a?"active":""}" data-area="${a}">${a} ${c}</button>`).join("")}</div>`:""}${this.group(visible)}<div class="footer">Sambesi Light Card v${SAMBESI_VERSION}</div></div></ha-card>`;
-    this.bind();
-  }
-  group(lights){ const groups={}; lights.forEach(l=>{ const a=this.areaName(l.entity_id); (groups[a]=groups[a]||[]).push(l); }); return Object.entries(groups).sort().map(([a,items])=>`<div class="group-title">${a}</div><div class="grid">${items.map(l=>this.light(l)).join("")}</div>`).join("") || `<div class="group-title">Keine Lampen gefunden</div>`; }
-  light(st){ const pc=pct(st.attributes && st.attributes.brightness || (isOn(st)?255:0)); return `<div class="light ${isOn(st)?"on":""}"><div class="top"><div><div class="name" title="${st.entity_id}">${nameOf(st)}</div><div class="area">${this.areaName(st.entity_id)}</div></div><button class="bulb" data-toggle="${st.entity_id}">💡</button></div><div class="state">${String(st.state).toUpperCase()} · ${pc}%</div><div class="bar"><div class="fill" style="width:${pc}%"></div></div><input class="range" data-br="${st.entity_id}" type="range" min="0" max="100" value="${pc}"><div>${(this._config.quick_brightness_values||[]).map(v=>`<button class="q" data-qb="${st.entity_id}" data-v="${v}">${v}%</button>`).join("")}</div></div>`; }
-  bind(){
-    const tabs=this.shadowRoot.querySelector(".tabs");
-    if(tabs){ const start=()=>{this._tabsBusy=true}; const end=()=>{this._tabsBusy=false; this._tabsBusyUntil=Date.now()+900}; tabs.addEventListener("pointerdown",start,{passive:true}); tabs.addEventListener("touchstart",start,{passive:true}); tabs.addEventListener("scroll",()=>{this._tabsBusyUntil=Date.now()+700},{passive:true}); tabs.addEventListener("pointerup",end,{passive:true}); tabs.addEventListener("pointercancel",end,{passive:true}); tabs.addEventListener("touchend",end,{passive:true}); tabs.addEventListener("mouseleave",end,{passive:true}); }
-    const search=this.shadowRoot.querySelector(".search"); if(search) search.addEventListener("input",e=>{this._query=e.target.value; this.render();});
-    this.shadowRoot.querySelectorAll("[data-area]").forEach(b=>b.addEventListener("click",()=>{this._area=b.dataset.area; this.render();}));
-    this.shadowRoot.querySelectorAll("[data-toggle]").forEach(b=>b.addEventListener("click",()=>{ const s=this._hass.states[b.dataset.toggle]; this._hass.callService("light", isOn(s)?"turn_off":"turn_on", {entity_id:b.dataset.toggle}); }));
-    this.shadowRoot.querySelectorAll("[data-br]").forEach(i=>i.addEventListener("change",()=>this._hass.callService("light","turn_on",{entity_id:i.dataset.br, brightness:bri(i.value)})));
-    this.shadowRoot.querySelectorAll("[data-qb]").forEach(b=>b.addEventListener("click",()=>this._hass.callService("light","turn_on",{entity_id:b.dataset.qb, brightness:bri(b.dataset.v)})));
-  }
-}
-class SambesiLightCardEditor extends HTMLElement{
-  constructor(){ super(); this.attachShadow({mode:"open"}); this._config=merge(DEFAULT_CONFIG,{}); }
-  setConfig(c){ this._config=merge(DEFAULT_CONFIG,c); this.render(); }
-  set hass(h){ this._hass=h; }
-  changed(k,v){ const c=merge(this._config,{}); c[k]=v; this._config=c; this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:c},bubbles:true,composed:true})); }
-  render(){ const c=this._config; this.shadowRoot.innerHTML=`<style>.ed{display:grid;gap:10px;padding:8px}label{display:grid;gap:4px;font-size:12px}input,select,textarea{padding:8px;border-radius:8px;border:1px solid #888;background:var(--secondary-background-color);color:var(--primary-text-color)}</style><div class="ed"><label>Titel<input id="title" value="${c.title||""}"></label><label>Preset<select id="preset"><option>djungle</option><option>neon</option><option>lcars</option><option>minimal</option></select></label><label>Layout<select id="layout"><option>wall</option><option>list</option><option>compact</option></select></label><label><input id="auto" type="checkbox" ${c.auto_discover?"checked":""}> Auto Discovery light.*</label><label>Manuelle Lampen<textarea id="lights" rows="4">${(c.lights||[]).join("\n")}</textarea></label></div>`; this.shadowRoot.querySelector("#preset").value=c.preset; this.shadowRoot.querySelector("#layout").value=c.layout; this.shadowRoot.querySelector("#title").addEventListener("change",e=>this.changed("title",e.target.value)); this.shadowRoot.querySelector("#preset").addEventListener("change",e=>this.changed("preset",e.target.value)); this.shadowRoot.querySelector("#layout").addEventListener("change",e=>this.changed("layout",e.target.value)); this.shadowRoot.querySelector("#auto").addEventListener("change",e=>this.changed("auto_discover",e.target.checked)); this.shadowRoot.querySelector("#lights").addEventListener("change",e=>this.changed("lights",e.target.value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))); }
-}
-customElements.define("sambesi-light-card", SambesiLightCard);
-customElements.define("sambesi-light-card-editor", SambesiLightCardEditor);
-window.customCards = window.customCards || [];
-window.customCards.push({type:"sambesi-light-card", name:"Sambesi Light Card", preview:true, description:"Universal Light Card for Home Assistant", documentationURL:"https://github.com/drschnalli/sambesi-light-card", getEntitySuggestion:(hass,entityId)=>{ if(!entityId || entityId.split('.')[0]!=="light") return null; return [{label:"Sambesi Light", config:{type:"custom:sambesi-light-card", title:"Sambesi Lights", preset:"djungle", layout:"wall", auto_discover:true, group_by:"area"}}]; }});
-console.info(`Sambesi Light Card v${SAMBESI_VERSION}`);
+/* Sambesi Light Card v0.1.5 */
+const CARD_VERSION='0.1.5';
+const CARD_TAG='sambesi-light-card';
+const EDITOR_TAG='sambesi-light-card-editor';
+const DEFAULT_CFG={title:'Sambesi Lights',subtitle:'Universal Light Control',area_filter:'',search:'',preview_limit:3,max_lights:0,show_search:true,show_area_chips:true,show_quick_buttons:true,show_footer:true,compact_preview:true,exclude_unavailable:false,entities:[],areas:[],theme:'sambesi'};
+const cfg=c=>({...DEFAULT_CFG,...(c||{}),entities:Array.isArray((c||{}).entities)?(c||{}).entities:[],areas:Array.isArray((c||{}).areas)?(c||{}).areas:[]});
+const fire=(n,t,d)=>n.dispatchEvent(new CustomEvent(t,{detail:d,bubbles:true,composed:true}));
+const domain=e=>(e||'').split('.')[0];
+const name=s=>s?.attributes?.friendly_name||s?.entity_id||'';
+const area=s=>s?.attributes?.area||s?.attributes?.room||s?.attributes?.area_name||s?.attributes?.device_class||'Ohne Bereich';
+const unavailable=s=>!s||['unavailable','unknown'].includes(String(s.state));
+const brightness=s=>Math.round(Number(s?.attributes?.brightness||0)/2.55);
+function isPreviewMode(c){c=cfg(c);return !c.entities.length&&!c.area_filter&&!c.search&&c.compact_preview!==false}
+function allLights(h,c){c=cfg(c);let arr=c.entities.length?c.entities.map(e=>h.states[e]).filter(Boolean):Object.values(h.states).filter(s=>domain(s.entity_id)==='light'); if(c.exclude_unavailable)arr=arr.filter(s=>!unavailable(s)); if(c.areas.length)arr=arr.filter(s=>c.areas.includes(area(s))); if(c.search){let q=c.search.toLowerCase();arr=arr.filter(s=>name(s).toLowerCase().includes(q)||s.entity_id.toLowerCase().includes(q)||area(s).toLowerCase().includes(q));}return arr.sort((a,b)=>area(a).localeCompare(area(b))||name(a).localeCompare(name(b)))}
+function groups(lights){let m=new Map();for(const s of lights){let a=area(s);if(!m.has(a))m.set(a,[]);m.get(a).push(s)}return [...m.entries()]}
+class SambesiLightCard extends HTMLElement{constructor(){super();this._config=cfg();this._search=''}static getConfigElement(){return document.createElement(EDITOR_TAG)}static getStubConfig(){return cfg({compact_preview:true,preview_limit:3})}setConfig(c){this._config=cfg(c)}set hass(h){this._hass=h;this.render()}getCardSize(){return isPreviewMode(this._config)?3:6}async call(e,service,data={}){await this._hass.callService('light',service,{entity_id:e,...data})}render(){let h=this._hass,c=cfg(this._config);if(!h)return;let all=allLights(h,{...c,search:this._search||c.search});let total=all.length,on=all.filter(s=>s.state==='on').length,off=all.filter(unavailable).length;let preview=isPreviewMode(c);let shown=preview?all.slice(0,c.preview_limit||3):(c.max_lights>0?all.slice(0,c.max_lights):all);this.innerHTML=`<ha-card class="slc ${c.theme}">${this.css()}<div class="head"><div><div class="title">${c.title}</div><div class="sub">${c.subtitle} · v${CARD_VERSION}</div></div><div class="stats"><span>${total} Lampen</span><span>${on} An</span><span>${off} Offline</span></div></div>${c.show_search&&!preview?`<input class="search" placeholder="Lampen suchen..." value="${this._search||''}">`:''}${c.show_area_chips&&!preview?this.renderChips(all):''}<div class="list">${this.renderGroups(shown)}</div>${preview&&total>shown.length?`<div class="preview-note">+ ${total-shown.length} weitere Lampen in der Vorschau ausgeblendet</div>`:''}${c.show_footer?`<footer>Sambesi Light Card ${CARD_VERSION}${preview?' · Vorschau begrenzt':''}</footer>`:''}</ha-card>`;let search=this.querySelector('.search'); if(search)search.oninput=e=>{this._search=e.target.value;this.render()};this.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>this.call(b.dataset.toggle,'toggle'));this.querySelectorAll('[data-br]').forEach(r=>r.onchange=()=>this.call(r.dataset.br,'turn_on',{brightness:Math.round(Number(r.value)*2.55)}));this.querySelectorAll('[data-pct]').forEach(b=>b.onclick=()=>this.call(b.dataset.entity,'turn_on',{brightness:Math.round(Number(b.dataset.pct)*2.55)}));}
+renderChips(all){let gs=groups(all).slice(0,8);return`<div class="chips"><button class="active">Alle ${all.length}</button>${gs.map(([a,ls])=>`<button>${a} ${ls.length}</button>`).join('')}</div>`}
+renderGroups(lights){let out='';for(const [a,ls] of groups(lights)){out+=`<section><h3>${a}</h3>${ls.map(s=>this.renderLight(s)).join('')}</section>`}return out||'<p class="empty">Keine Lampen gefunden.</p>'}
+renderLight(s){let pct=brightness(s);return`<div class="tile ${s.state==='on'?'on':''} ${unavailable(s)?'unav':''}"><div class="row"><div><b>${name(s)}</b><small>${area(s)}</small><small>${unavailable(s)?'OFFLINE':String(s.state).toUpperCase()} · ${pct}%</small></div><button data-toggle="${s.entity_id}">💡</button></div><div class="bar"><i style="width:${pct}%"></i></div><input data-br="${s.entity_id}" type="range" min="0" max="100" value="${pct}">${this._config.show_quick_buttons!==false?`<div class="quick">${[10,25,50,75,100].map(p=>`<button data-entity="${s.entity_id}" data-pct="${p}">${p}%</button>`).join('')}</div>`:''}</div>`}
+css(){return`<style>.slc{background:linear-gradient(145deg,#03140d,#06291b);color:#f8fff8;border-radius:26px;padding:18px;border:1px solid rgba(22,230,138,.28);box-shadow:0 0 28px rgba(22,230,138,.16);max-height:var(--sambesi-preview-max-height,560px);overflow:hidden}.head{display:flex;justify-content:space-between;gap:12px}.title{font-size:22px;font-weight:900}.sub,small,footer,.preview-note{color:#83dcb6;font-size:12px}.stats{display:flex;gap:8px;flex-wrap:wrap}.stats span,.chips button,.quick button{background:rgba(22,230,138,.14);border:1px solid rgba(22,230,138,.22);border-radius:999px;color:inherit;padding:7px 11px;font-weight:700}.search{width:100%;box-sizing:border-box;margin:14px 0 10px 0;border-radius:14px;border:1px solid rgba(22,230,138,.28);background:#03140d;color:#f8fff8;padding:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.chips .active{background:#16e68a;color:#02100b}.list{display:grid;gap:10px}h3{color:#83dcb6;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px}.tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:12px;margin-bottom:10px}.tile.unav{opacity:.65}.row{display:flex;justify-content:space-between;gap:12px}.row b,.row small{display:block}.row button{border:0;border-radius:14px;background:rgba(255,255,255,.10);color:inherit;width:40px;height:40px}.bar{height:9px;background:#02100b;border-radius:999px;margin:10px 0}.bar i{display:block;height:100%;border-radius:999px;background:#16e68a}input[type=range]{width:100%;accent-color:#d8d7e8}.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.preview-note{padding:10px 0 0}.empty{color:#83dcb6}@media(max-width:720px){.slc{max-height:520px}.head{display:block}.stats{margin-top:10px}}</style>`}}
+class SambesiLightCardEditor extends HTMLElement{constructor(){super();this._config=cfg()}setConfig(c){this._config=cfg(c);this.render()}set hass(h){this._hass=h;this.render()}emit(){fire(this,'config-changed',{config:this._config})}chg(k,v){this._config=cfg({...this._config,[k]:v});this.emit();this.render()}render(){let c=cfg(this._config);this.innerHTML=`<div class="ed"><style>.ed{display:grid;gap:12px}label{display:grid;gap:5px}input,select{width:100%;box-sizing:border-box;padding:9px;border-radius:10px;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color)}</style><label>Titel<input id="title" value="${c.title}"></label><label>Preview Limit<input id="preview" type="number" min="1" max="10" value="${c.preview_limit}"></label><label><span><input id="compact" type="checkbox" ${c.compact_preview!==false?'checked':''}> Vorschau im Card-Picker begrenzen</span></label></div>`;this.querySelector('#title').onchange=e=>this.chg('title',e.target.value);this.querySelector('#preview').onchange=e=>this.chg('preview_limit',Number(e.target.value)||3);this.querySelector('#compact').onchange=e=>this.chg('compact_preview',e.target.checked)}}
+customElements.define(CARD_TAG,SambesiLightCard);customElements.define(EDITOR_TAG,SambesiLightCardEditor);window.customCards=window.customCards||[];window.customCards.push({type:CARD_TAG,name:'Sambesi Light Card',description:'Universal Light Control with safe limited picker preview.',preview:true});console.info(`SAMBESI-LIGHT-CARD ${CARD_VERSION}`);
